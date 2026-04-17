@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import './index.css'
-import Sidebar from './components/Sidebar'
+import Navbar from './components/Navbar'
 import Dashboard from './pages/Dashboard'
 import Sources from './pages/Sources'
 import Queue from './pages/Queue'
@@ -14,7 +14,7 @@ function PrivateLayout({ children }) {
   if (!token) return <Navigate to="/login" replace />
   return (
     <div className="app-layout">
-      <Sidebar />
+      <Navbar />
       <main className="main-content">{children}</main>
     </div>
   )

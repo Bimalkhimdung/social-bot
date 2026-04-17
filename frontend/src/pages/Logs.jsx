@@ -12,11 +12,7 @@ export default function Logs() {
 
   return (
     <div className="fade-in">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Live Logs</h1>
-          <p className="page-subtitle">Real-time scraper and publisher output</p>
-        </div>
+      <div className="page-header" style={{ justifyContent: 'flex-end', marginTop: -16 }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
             <Wifi size={14} color="var(--green)" /> Connected

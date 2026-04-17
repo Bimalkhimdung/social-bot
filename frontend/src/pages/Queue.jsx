@@ -80,11 +80,7 @@ export default function Queue() {
 
   return (
     <div className="fade-in">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Post Queue</h1>
-          <p className="page-subtitle">Review, approve, and schedule posts</p>
-        </div>
+      <div className="page-header" style={{ justifyContent: 'flex-end', marginTop: -16 }}>
         <div style={{ display: 'flex', gap: 12 }}>
           <button 
             className="btn btn-primary" 

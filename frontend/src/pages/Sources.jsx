@@ -53,11 +53,7 @@ export default function Sources() {
 
   return (
     <div className="fade-in">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Sources</h1>
-          <p className="page-subtitle">Manage your news scraping sources</p>
-        </div>
+      <div className="page-header" style={{ justifyContent: 'flex-end', marginTop: -16 }}>
         <button className="btn btn-primary" onClick={() => setShowForm(true)}>
           <Plus size={16} /> Add Source
         </button>

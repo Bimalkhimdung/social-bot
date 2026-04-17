@@ -38,7 +38,8 @@
   --shadow-md:     0 4px 20px rgba(0,0,0,0.5);
   --shadow-glow:   0 0 24px var(--accent-glow);
 
-  --sidebar-w:     240px;
+  --sidebar-w:     240px; /* keeping for legacy just in case */
+  --navbar-h:      72px;
   --transition:    0.2s ease;
 }
 
@@ -68,14 +69,15 @@ input, textarea, select { font-family: inherit; }
 /* ── Layout ───────────────────────────────────────────────────────── */
 .app-layout {
   display: flex;
+  flex-direction: column;
   min-height: 100vh;
 }
 
 .main-content {
   flex: 1;
-  margin-left: var(--sidebar-w);
   padding: 32px;
-  transition: margin-left var(--transition);
+  margin-top: var(--navbar-h);
+  transition: padding var(--transition);
 }
 
 /* ── Glass card ───────────────────────────────────────────────────── */

@@ -29,11 +29,7 @@ export default function Dashboard() {
 
   return (
     <div className="fade-in">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Dashboard</h1>
-          <p className="page-subtitle">NEPSE Auto-Poster overview</p>
-        </div>
+      <div className="page-header" style={{ justifyContent: 'flex-end', marginTop: -16 }}>
         <button className="btn btn-primary" onClick={triggerScrape} disabled={scraping}>
           {scraping ? <span className="spinner" /> : <Play size={15} />}
           {scraping ? 'Scraping…' : 'Scrape Now'}

@@ -19,11 +19,7 @@ export default function History() {
 
   return (
     <div className="fade-in">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">History</h1>
-          <p className="page-subtitle">All published posts</p>
-        </div>
+      <div className="page-header" style={{ justifyContent: 'flex-end', marginTop: -16 }}>
         <button className="btn btn-secondary" onClick={load}>Refresh</button>
       </div>
 

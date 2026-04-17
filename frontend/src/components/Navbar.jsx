@@ -14,7 +14,7 @@ const NAV_ITEMS = [
   { to: '/logs',     icon: Terminal,        label: 'Live Logs' },
 ]
 
-export default function Sidebar() {
+export default function Navbar() {
   const navigate = useNavigate()
 
   const handleLogout = async () => {
@@ -24,16 +24,19 @@ export default function Sidebar() {
   }
 
   return (
-    <aside style={{
-      position: 'fixed', top: 0, left: 0, height: '100vh',
-      width: 'var(--sidebar-w)',
-      background: 'var(--bg-surface)',
-      borderRight: '1px solid var(--border)',
-      display: 'flex', flexDirection: 'column',
-      zIndex: 100,
+    <header style={{
+      position: 'fixed', top: 0, left: 0, right: 0, 
+      height: 'var(--navbar-h)',
+      background: 'var(--bg-glass)',
+      backdropFilter: 'blur(16px)',
+      WebkitBackdropFilter: 'blur(16px)',
+      borderBottom: '1px solid var(--border)',
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '0 32px',
+      zIndex: 1000,
     }}>
-      {/* Logo */}
-      <div style={{ padding: '28px 24px 20px', borderBottom: '1px solid var(--border)' }}>
+      {/* Left side: Logo */}
+      <div style={{ display: 'flex', alignItems: 'center', flex: '1 1 0' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{
             width: 38, height: 38, borderRadius: 10,
@@ -43,15 +46,15 @@ export default function Sidebar() {
           }}>
             <TrendingUp size={20} color="#fff" />
           </div>
-          <div>
-            <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)' }}>NEPSE Bot</div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>AUTO POSTER</div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)', lineHeight: 1.2 }}>NEPSE Bot</div>
+            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', letterSpacing: '0.05em', fontWeight: 600 }}>AUTO POSTER</div>
           </div>
         </div>
       </div>
 
-      {/* Nav */}
-      <nav style={{ flex: 1, padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {/* Center: Nav Links */}
+      <nav style={{ display: 'flex', alignItems: 'center', gap: 8, height: '100%', justifyContent: 'center' }}>
         {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
@@ -60,34 +63,34 @@ export default function Sidebar() {
             style={({ isActive }) => ({
               display: 'flex',
               alignItems: 'center',
-              gap: 12,
-              padding: '10px 14px',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: '0.9rem',
-              fontWeight: 500,
+              gap: 8,
+              padding: '0 16px',
+              height: 'calc(var(--navbar-h) - 1px)',
+              fontSize: '0.875rem',
+              fontWeight: 600,
               color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+              borderBottom: isActive ? '3px solid var(--accent)' : '3px solid transparent',
               background: isActive ? 'var(--bg-elevated)' : 'transparent',
-              borderLeft: isActive ? '3px solid var(--accent)' : '3px solid transparent',
               transition: 'all var(--transition)',
               textDecoration: 'none',
             })}
           >
-            <Icon size={17} />
+            <Icon size={16} style={{ color: 'inherit' }} />
             {label}
           </NavLink>
         ))}
       </nav>
 
-      {/* Logout */}
-      <div style={{ padding: '16px 12px', borderTop: '1px solid var(--border)' }}>
+      {/* Right side: Logout */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flex: '1 1 0' }}>
         <button
           onClick={handleLogout}
-          className="btn btn-ghost"
-          style={{ width: '100%', justifyContent: 'flex-start' }}
+          className="btn btn-ghost btn-sm"
+          style={{ display: 'flex', alignItems: 'center', gap: 8 }}
         >
           <LogOut size={16} /> Log out
         </button>
       </div>
-    </aside>
+    </header>
   )
 }

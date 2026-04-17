@@ -44,11 +44,7 @@ export default function Settings() {
 
   return (
     <div className="fade-in">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Settings</h1>
-          <p className="page-subtitle">Configure the bot behaviour and Facebook integration</p>
-        </div>
+      <div className="page-header" style={{ justifyContent: 'flex-end', marginTop: -16 }}>
         <button className="btn btn-primary" onClick={save} disabled={loading}>
           {loading ? <span className="spinner" /> : <Save size={15} />}
           {saved ? '✓ Saved!' : 'Save Settings'}
