@@ -114,7 +114,8 @@ async def publish_job():
         post, article, source = row
 
         # Build caption if not manually set
-        caption = post.caption or build_caption(
+        caption = post.caption or await build_caption(
+            db,
             title=article.title,
             source_name=source.name,
             article_url=article.article_url,
@@ -133,11 +134,12 @@ async def publish_job():
             )
             logger.info(f"Card generated ({len(card_bytes) // 1024} KB) for article id={article.id}")
             if publisher.is_configured:
-                photo_id = await publisher.upload_photo(card_bytes)
+                photo_id = await publisher.upload_photo(db, card_bytes)
         except Exception as exc:
             logger.warning(f"Card generation failed (will post without image): {exc}", exc_info=True)
 
-        fb_post_id = publisher.publish(
+        fb_post_id = await publisher.publish(
+            db,
             title=article.title,
             article_url=article.article_url,
             caption=caption,

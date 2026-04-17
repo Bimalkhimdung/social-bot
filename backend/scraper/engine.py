@@ -59,12 +59,18 @@ def _resolve_url(href: str, base_url: str) -> str:
     return urljoin(base_url, href)
 
 
-def _get_nested(data: dict, dot_path: str) -> Any:
-    """Traverse a dict using dot notation path like 'data.data'."""
+def _get_nested(data: dict | list, dot_path: str) -> Any:
+    """Traverse a dict/list using dot notation. E.g. 'data.0.imageUrl'"""
     parts = dot_path.split(".")
     for part in parts:
         if isinstance(data, dict):
             data = data.get(part)
+        elif isinstance(data, list) and part.isdigit():
+            idx = int(part)
+            if idx < len(data):
+                data = data[idx]
+            else:
+                return None
         else:
             return None
     return data
@@ -122,7 +128,7 @@ async def _scrape_html(source: Source, client: httpx.AsyncClient) -> list[dict]:
             "article_url": article_url,
             "summary": summary,
             "image_url": image_url,
-            "source_label": None,  # HTML sources don't have per-article publisher names
+            "source_label": None,
         })
 
     return results
@@ -135,33 +141,49 @@ async def _scrape_api(source: Source, client: httpx.AsyncClient) -> list[dict]:
     url_field = cfg.get("url_field", "url")
     url_template = cfg.get("url_template", "")
     image_field = cfg.get("image_field", "imageUrl")
-    summary_field = cfg.get("summary_field", "")          # ← summary text field
-    source_label_field = cfg.get("source_label_field", "")  # ← publisher name field
+    summary_field = cfg.get("summary_field", "")
+    source_label_field = cfg.get("source_label_field", "")
     results = []
 
     try:
-        resp = await client.get(source.url, headers=HEADERS, timeout=20)
+        # Use a more API-friendly URL with _embed for Wordpress sources when possible
+        fetch_url = source.url
+        if "wp-json/wp/v2/posts" in fetch_url and "_embed" not in fetch_url:
+            fetch_url += "&_embed=1" if "?" in fetch_url else "?_embed=1"
+
+        resp = await client.get(fetch_url, headers=HEADERS, timeout=20)
         resp.raise_for_status()
         data = resp.json()
     except Exception as exc:
         logger.warning(f"[{source.name}] API error: {exc}")
         return results
 
-    items = _get_nested(data, data_path)
+    # If data_path is empty, data is the root array (Wordpress standard)
+    items = _get_nested(data, data_path) if data_path else data
     if not isinstance(items, list):
         logger.warning(f"[{source.name}] Unexpected API data shape — got {type(items)}")
         return results
 
     for item in items:
-        title = item.get(title_field, "")
-        raw_url = item.get(url_field, "")
-        if url_template:
+        # Evaluate nested objects dynamically
+        title = _get_nested(item, title_field)
+        if isinstance(title, dict) and "rendered" in title:
+            title = BeautifulSoup(title["rendered"], "html.parser").get_text()
+            
+        raw_url = _get_nested(item, url_field) or ""
+        
+        if url_template and raw_url:
             article_url = url_template.replace("{" + url_field + "}", raw_url)
         else:
             article_url = raw_url
-        image_url = item.get(image_field)
-        summary = item.get(summary_field, "") if summary_field else None
-        source_label = item.get(source_label_field, "") if source_label_field else None
+
+        image_url = _get_nested(item, image_field)
+        
+        summary = _get_nested(item, summary_field) if summary_field else None
+        if isinstance(summary, dict) and "rendered" in summary:
+            summary = BeautifulSoup(summary["rendered"], "html.parser").get_text(strip=True)[:400]
+
+        source_label = _get_nested(item, source_label_field) if source_label_field else None
 
         if not title or not article_url:
             continue
@@ -169,9 +191,9 @@ async def _scrape_api(source: Source, client: httpx.AsyncClient) -> list[dict]:
         results.append({
             "title": title,
             "article_url": article_url,
-            "summary": summary,
-            "image_url": image_url,
-            "source_label": source_label,
+            "summary": str(summary) if summary else None,
+            "image_url": str(image_url) if image_url else None,
+            "source_label": str(source_label) if source_label else None,
         })
 
     return results
@@ -210,10 +232,10 @@ async def scrape_source(source: Source, db: AsyncSession) -> dict[str, int]:
         # Keyword filter — check title + summary
         combined_text = f"{title} {summary}"
         matched_kws = _keyword_match(combined_text, keywords)
-        if not matched_kws:
-            skipped_kw += 1
-            logger.debug(f"[{source.name}] Skipped (no keyword match): {title[:60]}")
-            continue
+        # if not matched_kws:
+        #     skipped_kw += 1
+        #     logger.debug(f"[{source.name}] Skipped (no keyword match): {title[:60]}")
+        #     continue
 
         article = Article(
             source_id=source.id,

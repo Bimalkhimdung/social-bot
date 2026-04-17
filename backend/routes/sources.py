@@ -94,6 +94,24 @@ async def delete_source(
     _: Annotated[str, Depends(get_current_user)],
 ):
     source = await _get_or_404(source_id, db)
+    
+    # Async-safe manual cascade deletion
+    from models.article import Article
+    from models.post import Post
+    from sqlalchemy import delete
+    
+    # Clean up associated Posts
+    await db.execute(
+        delete(Post).where(
+            Post.article_id.in_(
+                select(Article.id).where(Article.source_id == source_id)
+            )
+        )
+    )
+    # Clean up associated Articles
+    await db.execute(delete(Article).where(Article.source_id == source_id))
+    
+    # Finally, delete the Source
     await db.delete(source)
     await db.commit()
 

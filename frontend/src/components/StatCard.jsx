@@ -1,6 +1,10 @@
-export default function StatCard({ label, value, icon: Icon, color = 'var(--accent)', trend }) {
+export default function StatCard({ label, value, icon: Icon, color = 'var(--accent)', trend, onClick }) {
   return (
-    <div className="card fade-in" style={{ position: 'relative', overflow: 'hidden' }}>
+    <div 
+      className="card fade-in" 
+      style={{ position: 'relative', overflow: 'hidden', cursor: onClick ? 'pointer' : 'default' }}
+      onClick={onClick}
+    >
       {/* Glow blob */}
       <div style={{
         position: 'absolute', top: -20, right: -20,

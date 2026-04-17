@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { BarChart2, Clock, Inbox, Activity, Play, RefreshCw } from 'lucide-react'
 import StatCard from '../components/StatCard'
 import api from '../lib/api'
@@ -7,6 +8,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState(null)
   const [scraping, setScraping] = useState(false)
   const [recentPosts, setRecentPosts] = useState([])
+  const navigate = useNavigate()
 
   const loadStats = async () => {
     const [s, p] = await Promise.all([api.get('/stats'), api.get('/posts?limit=5')])
@@ -41,7 +43,7 @@ export default function Dashboard() {
       {/* Stat cards */}
       <div className="stat-grid">
         <StatCard label="Posts Today" value={stats?.posts_today} icon={BarChart2} color="var(--accent)" />
-        <StatCard label="Pending Queue" value={stats?.pending_count} icon={Inbox} color="var(--amber)" />
+        <StatCard label="Pending Queue" value={stats?.pending_count} icon={Inbox} color="var(--amber)" onClick={() => navigate('/queue')} />
         <StatCard label="Total Articles" value={stats?.total_articles} icon={Activity} color="var(--blue)" />
         <StatCard
           label="Last Post"

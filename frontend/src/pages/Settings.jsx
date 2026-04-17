@@ -86,7 +86,21 @@ export default function Settings() {
 
         {/* Scheduling */}
         <div className="card">
-          <h2 style={{ fontWeight: 700, marginBottom: 20, color: 'var(--blue)' }}>⏱ Scheduling</h2>
+          <h2 style={{ fontWeight: 700, marginBottom: 16, color: 'var(--blue)' }}>⏱ Scheduling</h2>
+          
+          <div style={{ 
+            backgroundColor: 'rgba(56, 189, 248, 0.1)', 
+            borderLeft: '4px solid var(--blue)', 
+            padding: '12px 16px', 
+            marginBottom: 24, 
+            borderRadius: '0 8px 8px 0',
+            fontSize: '0.875rem', 
+            lineHeight: 1.5,
+            color: 'var(--text-secondary)' 
+          }}>
+            <strong>How it works:</strong> The background bot wakes up periodically based on your interval to parse all active sources. Any posts reaching the "Approved" queue will not be published all at once. Instead, the bot will slowly <em>drip-feed</em> them to your Facebook audience one item at a time, strictly respecting your maximum daily limit to prevent spam. The bot will automatically halt all publications during your specified quiet hours.
+          </div>
+
           {['scrape_interval_minutes','max_posts_per_day','quiet_hours_start','quiet_hours_end'].map(key => {
             const f = SETTING_FIELDS.find(f => f.key === key)
             return (

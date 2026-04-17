@@ -136,9 +136,9 @@ async def reject_post(
     _: Annotated[str, Depends(get_current_user)],
 ):
     post, article, source = await _fetch_post_row(post_id, db)
-    post.status = PostStatus.rejected
+    await db.delete(post)
     await db.commit()
-    return _post_out(post, article, source)
+    return {"deleted": True, "id": post_id}
 
 
 @router.put("/{post_id}")
@@ -167,18 +167,36 @@ async def publish_now(
 
     post, article, source = await _fetch_post_row(post_id, db)
 
-    caption = post.caption or build_caption(
+    caption = post.caption or await build_caption(
+        db,
         title=article.title,
         source_name=source.name,
         article_url=article.article_url,
         keywords=article.keywords_list,
     )
 
-    fb_post_id = publisher.publish(
+    # ── Generate image card manually ────────────────────────────────
+    photo_id: str | None = None
+    try:
+        from image_card.generator import generate_news_card
+        card_bytes = await generate_news_card(
+            title=article.title,
+            image_url=article.image_url,
+            source_label=article.source_label or source.name,
+            article_url=article.article_url,
+        )
+        if publisher.is_configured:
+            photo_id = await publisher.upload_photo(db, card_bytes)
+    except Exception as exc:
+        print(f"Manual card generation failed: {exc}")
+
+    fb_post_id = await publisher.publish(
+        db,
         title=article.title,
         article_url=article.article_url,
         caption=caption,
         image_url=article.image_url,
+        photo_id=photo_id,
         dry_run=not publisher.is_configured,
     )
 

@@ -22,33 +22,5 @@ DEFAULT_SOURCES = [
             "summary_field": "summary",     # article summary snippet
             "source_label_field": "profileName",  # publisher name, e.g. "Corporate Samachar"
         },
-    },
-    {
-        "name": "Arthasarokar",
-        "url": "https://arthasarokar.com/category/market-affairs",
-        "source_type": "html",
-        "is_active": True,
-        "selector_config": {
-            "title_selector": "h3 a, h5 a",    # article title + link
-            "link_attr": "href",
-            "summary_selector": "p",           # first <p> after title
-            "image_selector": "img",
-            "image_attr": "src",
-            "base_url": "https://arthasarokar.com",
-        },
-    },
-    {
-        "name": "Corporate Nepal",
-        "url": "https://www.corporatenepal.com/category/capital",
-        "source_type": "html",
-        "is_active": True,
-        "selector_config": {
-            "title_selector": "h1 a, h5 a",
-            "link_attr": "href",
-            "summary_selector": "p",
-            "image_selector": "img",
-            "image_attr": "src",
-            "base_url": "https://www.corporatenepal.com",
-        },
-    },
+    }
 ]
