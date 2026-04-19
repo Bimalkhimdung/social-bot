@@ -232,10 +232,10 @@ async def scrape_source(source: Source, db: AsyncSession) -> dict[str, int]:
         # Keyword filter — check title + summary
         combined_text = f"{title} {summary}"
         matched_kws = _keyword_match(combined_text, keywords)
-        # if not matched_kws:
-        #     skipped_kw += 1
-        #     logger.debug(f"[{source.name}] Skipped (no keyword match): {title[:60]}")
-        #     continue
+        if settings.enable_keyword_filter and not matched_kws:
+            skipped_kw += 1
+            logger.debug(f"[{source.name}] Skipped (no keyword match): {title[:60]}")
+            continue
 
         article = Article(
             source_id=source.id,
