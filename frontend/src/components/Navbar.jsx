@@ -1,19 +1,19 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Radio, ListChecks, History,
-  Settings, Terminal, LogOut, TrendingUp, Zap, Bell, User
+  Settings, TrendingUp, Zap, Bell, User, LogOut, BarChart2
 } from 'lucide-react'
 import { useState } from 'react'
 import { useUI } from '../context/UIContext'
 import api from '../lib/api'
 
 const NAV_ITEMS = [
-  { to: '/',         icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/sources',  icon: Radio,           label: 'Sources'   },
-  { to: '/queue',    icon: ListChecks,      label: 'Queue'     },
-  { to: '/history',  icon: History,         label: 'History'   },
-  { to: '/settings', icon: Settings,        label: 'Settings'  },
-  { to: '/logs',     icon: Terminal,        label: 'Live Logs' },
+  { to: '/',           icon: LayoutDashboard, label: 'Dashboard'  },
+  { to: '/sources',    icon: Radio,           label: 'Sources'    },
+  { to: '/queue',      icon: ListChecks,      label: 'Queue'      },
+  { to: '/history',    icon: History,         label: 'History'    },
+  { to: '/settings',   icon: Settings,        label: 'Settings'   },
+  { to: '/daily-post', icon: BarChart2,       label: 'Daily Post' },
 ]
 
 export default function Navbar() {

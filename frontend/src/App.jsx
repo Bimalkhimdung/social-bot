@@ -10,7 +10,7 @@ import Sources from './pages/Sources'
 import Queue from './pages/Queue'
 import History from './pages/History'
 import Settings from './pages/Settings'
-import Logs from './pages/Logs'
+import DailyPost from './pages/DailyPost'
 import Login from './pages/Login'
 
 function PrivateLayout({ children }) {
@@ -43,7 +43,7 @@ export default function App() {
           <Route path="/queue" element={<PrivateLayout><Queue /></PrivateLayout>} />
           <Route path="/history" element={<PrivateLayout><History /></PrivateLayout>} />
           <Route path="/settings" element={<PrivateLayout><Settings /></PrivateLayout>} />
-          <Route path="/logs" element={<PrivateLayout><Logs /></PrivateLayout>} />
+          <Route path="/daily-post" element={<PrivateLayout><DailyPost /></PrivateLayout>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
@@ -52,3 +52,4 @@ export default function App() {
     </UIProvider>
   )
 }
+

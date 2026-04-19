@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import get_settings
 from database import init_db
 from scheduler import start_scheduler, stop_scheduler
-from routes import auth, sources, scraper, queue, posts, settings as settings_route, ws_logs
+from routes import auth, sources, scraper, queue, posts, settings as settings_route, ws_logs, daily
 from routes.ws_logs import install_ws_log_handler
 
 settings = get_settings()
@@ -60,6 +60,7 @@ app.include_router(queue.router)
 app.include_router(posts.router)
 app.include_router(settings_route.router)
 app.include_router(ws_logs.router)
+app.include_router(daily.router)
 
 
 # -- Health check --
