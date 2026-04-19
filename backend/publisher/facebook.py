@@ -83,7 +83,7 @@ class FacebookPublisher:
 
         endpoint = f"{FB_GRAPH_BASE}/{self._page_id}/photos"
         try:
-            async with httpx.AsyncClient(timeout=60) as client:
+            async with httpx.AsyncClient(timeout=120) as client:
                 resp = await client.post(
                     endpoint,
                     data={"access_token": self._token, "published": "false"},
@@ -136,7 +136,7 @@ class FacebookPublisher:
 
         for attempt in range(3):
             try:
-                async with httpx.AsyncClient(timeout=30) as client:
+                async with httpx.AsyncClient(timeout=120) as client:
                     resp = await client.post(endpoint, data=payload)
                     resp.raise_for_status()
                     data = resp.json()
@@ -145,6 +145,16 @@ class FacebookPublisher:
                     return fb_post_id
             except httpx.HTTPStatusError as exc:
                 error_body = exc.response.text
+                
+                # Check for "Already Posted" subcode (1366051)
+                try:
+                    error_json = exc.response.json().get("error", {})
+                    if error_json.get("error_subcode") == 1366051:
+                        logger.warning(f"Facebook reported 'Already Posted' (subcode 1366051). Treating as success on attempt {attempt+1}.")
+                        return f"already_published_{photo_id or 'no_photo'}"
+                except Exception:
+                    pass
+
                 logger.error(f"FB API error (attempt {attempt + 1}/3): {exc.response.status_code} — {error_body}")
                 if exc.response.status_code in (400, 401, 403):
                     break

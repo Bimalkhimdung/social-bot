@@ -200,6 +200,12 @@ async def publish_now(
         dry_run=not publisher.is_configured,
     )
 
+    if not fb_post_id and publisher.is_configured:
+        raise HTTPException(
+            status_code=500, 
+            detail="Facebook publication failed. The request timed out or returned an error. Check backend logs."
+        )
+
     post.status = PostStatus.posted
     post.posted_at = datetime.utcnow()
     post.caption = caption
