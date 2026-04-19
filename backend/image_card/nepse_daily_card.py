@@ -107,13 +107,11 @@ def _ensure_fonts() -> None:
     """Download NotoSansDevanagari fonts if not cached (one-time, sync)."""
     import urllib.request
     _FONT_URLS = {
-        "NotoSansDevanagari-Regular.ttf": (
-            "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/"
-            "NotoSansDevanagari/NotoSansDevanagari-Regular.ttf"
+        "Poppins-Regular.ttf": (
+            "https://github.com/google/fonts/raw/main/ofl/poppins/Poppins-Regular.ttf"
         ),
-        "NotoSansDevanagari-Bold.ttf": (
-            "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/"
-            "NotoSansDevanagari/NotoSansDevanagari-Bold.ttf"
+        "Poppins-Bold.ttf": (
+            "https://github.com/google/fonts/raw/main/ofl/poppins/Poppins-Bold.ttf"
         ),
     }
     FONTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -129,7 +127,7 @@ def _ensure_fonts() -> None:
 
 def _devanagari_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
     variant = "Bold" if bold else "Regular"
-    path = FONTS_DIR / f"NotoSansDevanagari-{variant}.ttf"
+    path = FONTS_DIR / f"Poppins-{variant}.ttf"
     try:
         return ImageFont.truetype(str(path), size)
     except Exception:
@@ -331,15 +329,154 @@ async def generate_nepse_daily_card() -> bytes:
 
 
     # ── Footer: overwrite baked-in footer text ────────────────────────────────
-    #footer_y1 = tmpl_h - 88
-    #draw.rectangle([(0, footer_y1), (tmpl_w, tmpl_h)], fill=(41, 145, 25, 255))
-    #ft_bold = _latin_font(30, bold=True)
-    #ft_reg = _latin_font(28)
-    #footer_baseline = footer_y1 + 28
-    #draw.text((60, footer_baseline), "sharehubnepal.com", font=ft_bold, fill=(255, 255, 255, 255))
-    #source_str = "Source : sharehubnepal.com"
-    #s_tw = int(draw.textlength(source_str, font=ft_reg))
-    #draw.text((tmpl_w - 60 - s_tw, footer_baseline + 2), source_str, font=ft_reg, fill=(255, 255, 255, 255))
+    footer_y1 = tmpl_h - 88
+    # Match the template's green footer color
+    draw.rectangle([(0, footer_y1), (tmpl_w, tmpl_h)], fill=(41, 145, 25, 255))
+    
+    ft_bold = _devanagari_font(32, bold=True)
+    ft_reg = _devanagari_font(30, bold=False)
+    footer_baseline = footer_y1 + 24
+    
+    # Left: Read More
+    draw.text((45, footer_baseline), "Read More", font=ft_bold, fill=(255, 255, 255, 255))
+    
+    # Right: Source
+    source_str = "Source : www.nepsesignal.com"
+    s_tw = int(draw.textlength(source_str, font=ft_reg))
+    draw.text((tmpl_w - 45 - s_tw, footer_baseline + 2), source_str, font=ft_reg, fill=(255, 255, 255, 255))
+
+    # ── Serialize → JPEG ──────────────────────────────────────────────────────
+    buf = io.BytesIO()
+    canvas.convert("RGB").save(buf, format="JPEG", quality=93, optimize=True)
+    buf.seek(0)
+    return buf.read()
+
+
+async def generate_custom_card(custom_text: str) -> bytes:
+    """
+    Generate a custom card by compositing a custom text message
+    onto the nepse_today.png template.
+    """
+    await asyncio.to_thread(_ensure_fonts)
+
+    # ── Load template ─────────────────────────────────────────────────────────
+    template = Image.open(TEMPLATE_PATH).convert("RGBA")
+    tmpl_w, tmpl_h = template.size
+    canvas = Image.new("RGBA", (tmpl_w, tmpl_h), (255, 255, 255, 255))
+    canvas.alpha_composite(template)
+    draw = ImageDraw.Draw(canvas)
+
+    # ── Date box (top white rectangle) ────────────────────────────────────────
+    DATE_X1, DATE_X2 = 333, 798
+    DATE_Y1, DATE_Y2 = 0, 95
+    DATE_BOX_W = DATE_X2 - DATE_X1
+    DATE_BOX_H = DATE_Y2 - DATE_Y1
+
+    draw.rectangle([(DATE_X1, DATE_Y1), (DATE_X2, DATE_Y2)], fill=(255, 255, 255, 255))
+
+    date_str = _nepali_date_str()
+    date_font = _devanagari_font(44, bold=True)
+    date_color = (200, 30, 30, 255)
+    date_tw = int(draw.textlength(date_str, font=date_font))
+    bbox = draw.textbbox((0, 0), date_str, font=date_font)
+    text_h = bbox[3] - bbox[1]
+    date_tx = DATE_X1 + (DATE_BOX_W - date_tw) // 2
+    date_ty = DATE_Y1 + (DATE_BOX_H - text_h) // 2 - bbox[1]
+    draw.text((date_tx, date_ty), date_str, font=date_font, fill=date_color)
+
+    # ── White content zone ────────────────────────────────────────────────────
+    CONT_X1, CONT_X2 = 108, 971
+    CONT_Y1, CONT_Y2 = 628, 1239
+    CONT_W = CONT_X2 - CONT_X1
+    CONT_H = CONT_Y2 - CONT_Y1
+
+    draw.rectangle([(CONT_X1, CONT_Y1), (CONT_X2, CONT_Y2)], fill=(255, 255, 255, 255))
+
+    # Try to fit the text
+    import textwrap
+    # Use a solid readable font size
+    max_font_size = 64
+    min_font_size = 28
+    font_size = max_font_size
+    text_color = (15, 25, 80, 255)
+
+    # We will try to wrap text properly. We loop down font size if it doesn't fit height-wise
+    lines = []
+    line_h = 0
+    font = _devanagari_font(font_size, bold=True)
+
+    # Helper function to wrap text by pixel width
+    def wrap_text(text, font, max_width):
+        words = text.split()
+        wrapped = []
+        current_line = []
+        for word in words:
+            test_line = " ".join(current_line + [word])
+            w = draw.textlength(test_line, font=font)
+            if w <= max_width:
+                current_line.append(word)
+            else:
+                if current_line:
+                    wrapped.append(" ".join(current_line))
+                    current_line = [word]
+                else:
+                    wrapped.append(word)
+        if current_line:
+            wrapped.append(" ".join(current_line))
+        return wrapped
+
+    # Calculate wrapped lines and height
+    padding = 60
+    max_text_width = CONT_W - (padding * 2)
+    max_text_height = CONT_H - (padding * 2)
+
+    for fs in range(max_font_size, min_font_size - 1, -2):
+        font = _devanagari_font(fs, bold=True)
+        # Split explicitly on newlines if user provided them
+        paragraphs = custom_text.split('\n')
+        lines = []
+        for p in paragraphs:
+            if not p.strip():
+                lines.append("")
+                continue
+            lines.extend(wrap_text(p, font, max_text_width))
+            
+        bb = draw.textbbox((0, 0), "A", font=font)
+        line_h = (bb[3] - bb[1]) + (fs // 3) # padding between lines
+        
+        total_height = len(lines) * line_h
+        if total_height <= max_text_height:
+            break
+
+    # Now draw the properly styled centered text block
+    total_height = len(lines) * line_h
+    current_y = CONT_Y1 + (CONT_H - total_height) // 2
+
+    for line in lines:
+        if not line:
+            current_y += line_h
+            continue
+        bb = draw.textbbox((0, 0), line, font=font)
+        tw = bb[2] - bb[0]
+        tx = CONT_X1 + (CONT_W - tw) // 2
+        draw.text((tx, current_y - bb[1]), line, font=font, fill=text_color)
+        current_y += line_h
+
+    # ── Footer: overwrite baked-in footer text ────────────────────────────────
+    footer_y1 = tmpl_h - 88
+    draw.rectangle([(0, footer_y1), (tmpl_w, tmpl_h)], fill=(41, 145, 25, 255))
+    
+    ft_bold = _devanagari_font(32, bold=True)
+    ft_reg = _devanagari_font(30, bold=False)
+    footer_baseline = footer_y1 + 24
+    
+    # Left: Read More
+    draw.text((45, footer_baseline), "Read More", font=ft_bold, fill=(255, 255, 255, 255))
+    
+    # Right: Source
+    source_str = "Source : www.nepsesignal.com"
+    s_tw = int(draw.textlength(source_str, font=ft_reg))
+    draw.text((tmpl_w - 45 - s_tw, footer_baseline + 2), source_str, font=ft_reg, fill=(255, 255, 255, 255))
 
     # ── Serialize → JPEG ──────────────────────────────────────────────────────
     buf = io.BytesIO()
