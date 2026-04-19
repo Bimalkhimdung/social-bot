@@ -1,6 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import './index.css'
+import { UIProvider } from './context/UIContext'
+import ToastContainer from './components/ToastContainer'
+import ConfirmModal from './components/ConfirmModal'
 import Navbar from './components/Navbar'
+import Footer from './components/Footer'
 import Dashboard from './pages/Dashboard'
 import Sources from './pages/Sources'
 import Queue from './pages/Queue'
@@ -15,24 +19,36 @@ function PrivateLayout({ children }) {
   return (
     <div className="app-layout">
       <Navbar />
-      <main className="main-content">{children}</main>
+      <main className="main-content" style={{ display: 'flex', flexDirection: 'column' }}>
+        <div style={{ 
+          maxWidth: 1200, margin: '0 auto', width: '100%', 
+          flex: 1, display: 'flex', flexDirection: 'column' 
+        }}>
+          <div style={{ flex: 1 }}>{children}</div>
+          <Footer />
+        </div>
+      </main>
     </div>
   )
 }
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/" element={<PrivateLayout><Dashboard /></PrivateLayout>} />
-        <Route path="/sources" element={<PrivateLayout><Sources /></PrivateLayout>} />
-        <Route path="/queue" element={<PrivateLayout><Queue /></PrivateLayout>} />
-        <Route path="/history" element={<PrivateLayout><History /></PrivateLayout>} />
-        <Route path="/settings" element={<PrivateLayout><Settings /></PrivateLayout>} />
-        <Route path="/logs" element={<PrivateLayout><Logs /></PrivateLayout>} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
+    <UIProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/" element={<PrivateLayout><Dashboard /></PrivateLayout>} />
+          <Route path="/sources" element={<PrivateLayout><Sources /></PrivateLayout>} />
+          <Route path="/queue" element={<PrivateLayout><Queue /></PrivateLayout>} />
+          <Route path="/history" element={<PrivateLayout><History /></PrivateLayout>} />
+          <Route path="/settings" element={<PrivateLayout><Settings /></PrivateLayout>} />
+          <Route path="/logs" element={<PrivateLayout><Logs /></PrivateLayout>} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+      <ToastContainer />
+      <ConfirmModal />
+    </UIProvider>
   )
 }

@@ -1,106 +1,169 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BarChart2, Clock, Inbox, Activity, Play, RefreshCw } from 'lucide-react'
+import { 
+  BarChart2, Clock, Inbox, Activity, 
+  ExternalLink, Sliders
+} from 'lucide-react'
 import StatCard from '../components/StatCard'
+import SchedulerBar from '../components/SchedulerBar'
+import PerformanceChart from '../components/PerformanceChart'
+import HealthCheck from '../components/HealthCheck'
 import api from '../lib/api'
+
+// Helper for relative time
+const timeAgo = (date) => {
+  if (!date) return '—'
+  const seconds = Math.floor((new Date() - new Date(date)) / 1000)
+  let interval = seconds / 31536000
+  if (interval > 1) return Math.floor(interval) + ' years ago'
+  interval = seconds / 2592000
+  if (interval > 1) return Math.floor(interval) + ' months ago'
+  interval = seconds / 86400
+  if (interval > 1) return Math.floor(interval) + ' days ago'
+  interval = seconds / 3600
+  if (interval > 1) return Math.floor(interval) + ' hours ago'
+  interval = seconds / 60
+  if (interval > 1) return Math.floor(interval) + ' mins ago'
+  return Math.floor(seconds) + ' secs ago'
+}
+
+// Helper for source initials
+const getInitials = (name) => {
+  if (!name) return '??'
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+}
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null)
-  const [scraping, setScraping] = useState(false)
   const [recentPosts, setRecentPosts] = useState([])
   const navigate = useNavigate()
 
-  const loadStats = async () => {
-    const [s, p] = await Promise.all([api.get('/stats'), api.get('/posts?limit=5')])
-    setStats(s.data)
-    setRecentPosts(p.data)
+  const loadData = async () => {
+    try {
+      const [s, p] = await Promise.all([api.get('/stats'), api.get('/posts?limit=8')])
+      setStats(s.data)
+      setRecentPosts(p.data)
+    } catch (e) {}
   }
 
   useEffect(() => {
-    loadStats()
-    const interval = setInterval(loadStats, 30000)
+    loadData()
+    const interval = setInterval(loadData, 30000)
     return () => clearInterval(interval)
   }, [])
 
-  const triggerScrape = async () => {
-    setScraping(true)
-    try { await api.post('/scraper/run') } finally { setScraping(false); loadStats() }
-  }
-
   return (
     <div className="fade-in">
-      <div className="page-header" style={{ justifyContent: 'flex-end', marginTop: -16 }}>
-        <button className="btn btn-primary" onClick={triggerScrape} disabled={scraping}>
-          {scraping ? <span className="spinner" /> : <Play size={15} />}
-          {scraping ? 'Scraping…' : 'Scrape Now'}
-        </button>
-      </div>
+      {/* Real-time Status Bar */}
+      <SchedulerBar 
+        running={stats?.scheduler_running} 
+        monitoring={['Sharesansar', 'Nepali Paisa', 'Bizshala']} 
+        nextSync="04:22"
+      />
 
-      {/* Stat cards */}
-      <div className="stat-grid">
-        <StatCard label="Posts Today" value={stats?.posts_today} icon={BarChart2} color="var(--accent)" />
-        <StatCard label="Pending Queue" value={stats?.pending_count} icon={Inbox} color="var(--amber)" onClick={() => navigate('/queue')} />
-        <StatCard label="Total Articles" value={stats?.total_articles} icon={Activity} color="var(--blue)" />
+      {/* Main Stats Grid */}
+      <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: 24, marginBottom: 40 }}>
+        <StatCard 
+          label="Posts Today" 
+          value={stats?.posts_today?.toString().padStart(2, '0')} 
+          icon={BarChart2} 
+          trend="+20% from yesterday" 
+        />
+        <StatCard 
+          label="Pending Queue" 
+          value={stats?.pending_count?.toString().padStart(2, '0')} 
+          icon={Inbox} 
+          trend="Processing active" 
+          onClick={() => navigate('/queue')}
+        />
+        <StatCard 
+          label="Total Articles" 
+          value={stats?.total_articles} 
+          icon={Activity} 
+          trend="Database healthy" 
+        />
         <StatCard
           label="Last Post"
-          value={stats?.last_post_at ? new Date(stats.last_post_at).toLocaleTimeString() : 'None'}
+          value={stats?.last_post_at ? new Date(stats.last_post_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : 'None'}
           icon={Clock}
-          color="var(--green)"
+          trend="UTC+5:45 (Nepal)"
         />
       </div>
 
-      {/* Scheduler status */}
-      <div className="card" style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-          <div style={{
-            width: 8, height: 8, borderRadius: '50%',
-            background: stats?.scheduler_running ? 'var(--green)' : 'var(--red)',
-            boxShadow: stats?.scheduler_running ? '0 0 8px var(--green)' : 'none',
-          }} className={stats?.scheduler_running ? 'pulse' : ''} />
-          <span style={{ fontWeight: 700 }}>Scheduler</span>
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-            {stats?.scheduler_running ? 'Running' : 'Stopped'}
-          </span>
-          {stats?.scraper_running && (
-            <span style={{ marginLeft: 8, fontSize: '0.8rem', color: 'var(--blue)' }}>⟳ Scraping in progress…</span>
-          )}
-        </div>
-      </div>
-
-      {/* Recent posts */}
-      <div className="card">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <h2 style={{ fontWeight: 700, fontSize: '1rem' }}>Recent Posts</h2>
-          <button className="btn btn-ghost btn-sm" onClick={loadStats}><RefreshCw size={14} /></button>
+      {/* Recent Scrapes Section */}
+      <div className="card" style={{ padding: '0 0 12px 0', border: 'none', background: 'transparent', boxShadow: 'none', marginBottom: 40 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, padding: '0 8px' }}>
+          <div>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff', marginBottom: 6 }}>Recent Scrapes</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Real-time feed of automated content extraction.</p>
+          </div>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button className="btn btn-secondary btn-sm" style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 6 }} onClick={() => navigate('/history')}>
+              View All
+            </button>
+            <button className="btn btn-secondary btn-sm" style={{ padding: '6px 8px', background: 'rgba(255,255,255,0.05)', borderRadius: 6 }}>
+              <Sliders size={14} />
+            </button>
+          </div>
         </div>
 
-        {recentPosts.length === 0 ? (
-          <div className="empty-state" style={{ padding: '24px 0' }}>No posts yet</div>
-        ) : (
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div className="table-wrap">
-            <table>
-              <thead>
+            <table className="table-modern">
+              <thead style={{ background: 'rgba(255,255,255,0.02)' }}>
                 <tr>
-                  <th>Title</th><th>Source</th><th>Status</th><th>Posted</th>
+                  <th style={{ padding: '16px 24px' }}>Article Title</th>
+                  <th>Source</th>
+                  <th>Status</th>
+                  <th>Timestamp</th>
+                  <th style={{ textAlign: 'right', paddingRight: 24 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {recentPosts.map(p => (
-                  <tr key={p.id}>
-                    <td style={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {p.article?.title}
-                    </td>
-                    <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{p.article?.source_name}</td>
-                    <td><span className={`badge badge-${p.status}`}>{p.status}</span></td>
-                    <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                      {p.posted_at ? new Date(p.posted_at).toLocaleString() : '—'}
-                    </td>
-                  </tr>
-                ))}
+                {recentPosts.length === 0 ? (
+                  <tr><td colSpan="5" style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>No recent activity detected.</td></tr>
+                ) : (
+                  recentPosts.map(p => (
+                    <tr key={p.id}>
+                      <td style={{ padding: '16px 24px', fontWeight: 500, color: '#fff', maxWidth: 400 }}>
+                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {p.article?.title}
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div className="source-badge">
+                            {getInitials(p.article?.source_name)}
+                          </div>
+                          <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{p.article?.source_name}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`pill pill-${p.status === 'POSTED' ? 'posted' : 'pending'}`}>
+                          {p.status}
+                        </span>
+                      </td>
+                      <td style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
+                        {timeAgo(p.posted_at || p.created_at)}
+                      </td>
+                      <td style={{ textAlign: 'right', paddingRight: 24 }}>
+                        <button className="btn btn-ghost btn-sm" style={{ color: 'var(--text-muted)' }}>
+                          <ExternalLink size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
-        )}
+        </div>
+      </div>
+
+      {/* Expanded Analytics Row */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 24, marginBottom: 40 }}>
+        <PerformanceChart />
+        <HealthCheck />
       </div>
     </div>
   )

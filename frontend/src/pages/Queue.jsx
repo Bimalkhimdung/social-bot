@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { CheckCircle, XCircle, Send, Edit2, X, Save, DownloadCloud } from 'lucide-react'
+import { CheckCircle, XCircle, Send, Edit2, X, Save } from 'lucide-react'
 import PostCard from '../components/PostCard'
+import { useUI } from '../context/UIContext'
 import api from '../lib/api'
 
 const STATUS_FILTERS = ['all', 'pending', 'approved', 'posted', 'rejected']
@@ -12,8 +13,7 @@ export default function Queue() {
   const [editCaption, setEditCaption] = useState('')
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
-  const [scraping, setScraping] = useState(false)
-  const [confirmDialog, setConfirmDialog] = useState(null)
+  const { confirm, showToast } = useUI()
 
   const load = async () => {
     setLoading(true)
@@ -24,84 +24,88 @@ export default function Queue() {
     } finally { setLoading(false) }
   }
 
-  const triggerScrape = async () => {
-    setScraping(true)
-    try {
-      await api.post('/scraper/run')
-      // Poll for new items after giving the scraper a head start
-      setTimeout(load, 3000)
-    } catch (e) {
-      console.error('Scrape trigger failed', e)
-    } finally {
-      // Re-enable the button after a cooldown
-      setTimeout(() => setScraping(false), 8000)
-    }
-  }
-
-  useEffect(() => { load() }, [filter, page])
-
   const requestApprove = (id) => {
-    setConfirmDialog({
+    confirm({
+      title: 'Approve Post?',
       message: 'Are you sure you want to approve this post for scheduled publishing?',
       type: 'success',
       onConfirm: async () => {
-        await api.put(`/queue/${id}/approve`)
-        load()
+        try {
+          await api.put(`/queue/${id}/approve`)
+          showToast('Post approved successfully')
+          load()
+        } catch (e) {
+          showToast('Failed to approve post', 'error')
+        }
       }
     })
   }
 
   const requestReject = (id) => {
-    setConfirmDialog({
+    confirm({
+      title: 'Reject Post?',
       message: 'Are you sure you want to permanently reject and delete this post?',
       type: 'danger',
       onConfirm: async () => {
-        await api.put(`/queue/${id}/reject`)
-        load()
+        try {
+          await api.put(`/queue/${id}/reject`)
+          showToast('Post rejected and deleted')
+          load()
+        } catch (e) {
+          showToast('Failed to reject post', 'error')
+        }
       }
     })
   }
 
   const requestPublishNow = (id) => {
-    setConfirmDialog({
+    confirm({
+      title: 'Publish Now?',
       message: 'Are you sure you want to instantly publish this post to Facebook right now?',
       type: 'primary',
       onConfirm: async () => {
-        await api.post(`/queue/${id}/publish-now`)
-        load()
+        try {
+          const { data } = await api.post(`/queue/${id}/publish-now`)
+          if (data.dry_run) {
+            showToast('[DRY-RUN] Simulation successful — article marked as posted.', 'success')
+          } else {
+            showToast('Successfully published to Facebook!', 'success')
+          }
+          load()
+        } catch (e) {
+          showToast('Publishing failed. Check logs.', 'error')
+        }
       }
     })
   }
+
   const saveCaption = async (id) => {
-    await api.put(`/queue/${id}`, { caption: editCaption })
-    setEditingId(null)
-    load()
+    try {
+      await api.put(`/queue/${id}`, { caption: editCaption })
+      showToast('Caption updated')
+      setEditingId(null)
+      load()
+    } catch (e) {
+      showToast('Failed to update caption', 'error')
+    }
   }
+
+  useEffect(() => { load() }, [filter, page])
 
   return (
     <div className="fade-in">
-      <div className="page-header" style={{ justifyContent: 'flex-end', marginTop: -16 }}>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <button 
-            className="btn btn-primary" 
-            onClick={triggerScrape}
-            disabled={scraping}
-            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            <DownloadCloud size={16} />
-            {scraping ? 'Scraping...' : 'Scrape Now'}
-          </button>
-          <button className="btn btn-secondary" onClick={load}>Refresh</button>
+      {/* Controls row: Filters + Refresh */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, marginTop: -8 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {STATUS_FILTERS.map(s => (
+            <button key={s} className={`btn btn-sm ${filter === s ? 'btn-primary' : 'btn-secondary'}`} onClick={() => { setFilter(s); setPage(1) }}>
+              {s.charAt(0).toUpperCase() + s.slice(1)}
+            </button>
+          ))}
         </div>
-      </div>
-
-      {/* Filter tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-        {STATUS_FILTERS.map(s => (
-          <button key={s} className={`btn btn-sm ${filter === s ? 'btn-primary' : 'btn-secondary'}`} onClick={() => { setFilter(s); setPage(1) }}>
-            {s.charAt(0).toUpperCase() + s.slice(1)}
-          </button>
-        ))}
+        <button className="btn btn-secondary btn-sm" onClick={load} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 6 }}>
+          Refresh
+        </button>
       </div>
 
       {loading && <div style={{ display: 'flex', justifyContent: 'center', padding: 32 }}><div className="spinner" /></div>}
@@ -166,50 +170,6 @@ export default function Queue() {
         <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 32 }}>
           {page > 1 && <button className="btn btn-secondary" onClick={() => setPage(p => p - 1)}>← Prev</button>}
           <button className="btn btn-secondary" onClick={() => setPage(p => p + 1)}>Next →</button>
-        </div>
-      )}
-      {/* Custom Confirmation Modal */}
-      {confirmDialog && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)',
-          zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}>
-          <div className="card fade-in" style={{ width: 400, maxWidth: '90%', padding: '32px 24px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <div style={{ 
-              width: 48, height: 48, borderRadius: '50%', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              backgroundColor: confirmDialog.type === 'danger' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(56, 189, 248, 0.1)',
-              color: confirmDialog.type === 'danger' ? 'var(--red)' : 'var(--blue)'
-            }}>
-              {confirmDialog.type === 'danger' ? <XCircle size={24} /> : <CheckCircle size={24} />}
-            </div>
-            <h2 style={{ marginBottom: 12, fontSize: '1.25rem' }}>Are you sure?</h2>
-            <p style={{ marginBottom: 28, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{confirmDialog.message}</p>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 12, width: '100%' }}>
-              <button 
-                className="btn btn-secondary" 
-                style={{ flex: 1 }}
-                onClick={() => setConfirmDialog(null)}
-              >
-                Cancel
-              </button>
-              <button 
-                className="btn" 
-                style={{ 
-                  flex: 1, 
-                  backgroundColor: confirmDialog.type === 'danger' ? 'var(--red)' : 'var(--blue)', 
-                  color: 'white',
-                  border: 'none'
-                }}
-                onClick={() => {
-                  confirmDialog.onConfirm()
-                  setConfirmDialog(null)
-                }}
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </div>
