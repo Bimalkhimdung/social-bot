@@ -11,14 +11,17 @@ made in the dashboard take effect without a restart.
 
 import asyncio
 import logging
-from datetime import datetime, time as dt_time
+from datetime import datetime
+from typing import Any
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.jobstores.memory import MemoryJobStore
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import get_settings
 from database import AsyncSessionLocal
+from models.settings import Setting
 
 logger = logging.getLogger("nepsebot.scheduler")
 settings = get_settings()
@@ -29,6 +32,35 @@ scheduler = AsyncIOScheduler(
 )
 
 _scraper_running = False
+
+
+async def _get_lived_settings(db: AsyncSession) -> dict[str, Any]:
+    """Fetch interval and limits from database 'Setting' table."""
+    keys = [
+        "scrape_interval_minutes",
+        "max_posts_per_day",
+        "quiet_hours_start",
+        "quiet_hours_end"
+    ]
+    result = await db.execute(select(Setting).where(Setting.key.in_(keys)))
+    items = {s.key: s.value for s in result.scalars().all()}
+    
+    cfg = get_settings()
+    
+    # Helper to parse ints safely
+    def _get_int(key, default):
+        val = items.get(key)
+        try:
+            return int(val) if val is not None else default
+        except (ValueError, TypeError):
+            return default
+
+    return {
+        "scrape_interval_minutes": _get_int("scrape_interval_minutes", cfg.scrape_interval_minutes),
+        "max_posts_per_day": _get_int("max_posts_per_day", cfg.max_posts_per_day),
+        "quiet_hours_start": _get_int("quiet_hours_start", cfg.quiet_hours_start),
+        "quiet_hours_end": _get_int("quiet_hours_end", cfg.quiet_hours_end),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -42,9 +74,23 @@ async def scrape_job():
         return
     _scraper_running = True
     logger.info("Scrape job started")
+    
     try:
         from scraper.engine import scrape_all_sources
         async with AsyncSessionLocal() as db:
+            # 1. Check for interval changes to reschedule next tick
+            live = await _get_lived_settings(db)
+            new_interval = live["scrape_interval_minutes"]
+            
+            job = scheduler.get_job("scrape_job")
+            if job:
+                # APScheduler stores interval as a timedelta with minutes
+                current_minutes = job.trigger.interval.total_seconds() / 60
+                if int(current_minutes) != new_interval:
+                    logger.info(f"Rescheduling scrape_job: {int(current_minutes)}m -> {new_interval}m")
+                    scheduler.reschedule_job("scrape_job", trigger="interval", minutes=new_interval)
+
+            # 2. Perform scraping
             stats = await scrape_all_sources(db)
         logger.info(f"Scrape job done: {stats}")
     except Exception as exc:
@@ -62,24 +108,28 @@ async def publish_job():
     from models.article import Article
     from models.source import Source
     from publisher.facebook import publisher, build_caption
-    from sqlalchemy import select, func
-
-    cfg = get_settings()
-    now = datetime.now()
-    current_hour = now.hour
-
-    # Quiet hours check
-    qs, qe = cfg.quiet_hours_start, cfg.quiet_hours_end
-    if qs > qe:  # crosses midnight
-        in_quiet = current_hour >= qs or current_hour < qe
-    else:
-        in_quiet = qs <= current_hour < qe
-
-    if in_quiet:
-        logger.info(f"Quiet hours active ({qs}:00–{qe}:00) — skipping publish")
-        return
+    from sqlalchemy import func
 
     async with AsyncSessionLocal() as db:
+        # Load live settings
+        live = await _get_lived_settings(db)
+        max_posts = live["max_posts_per_day"]
+        qs = live["quiet_hours_start"]
+        qe = live["quiet_hours_end"]
+
+        now = datetime.now()
+        current_hour = now.hour
+
+        # Quiet hours check
+        if qs > qe:  # crosses midnight
+            in_quiet = current_hour >= qs or current_hour < qe
+        else:
+            in_quiet = qs <= current_hour < qe
+
+        if in_quiet:
+            logger.info(f"Quiet hours active ({qs}:00–{qe}:00) — skipping publish")
+            return
+
         # Count posts published today
         today_start = datetime(now.year, now.month, now.day)
         posted_today = await db.scalar(
@@ -89,11 +139,11 @@ async def publish_job():
             )
         )
 
-        if posted_today >= cfg.max_posts_per_day:
-            logger.info(f"Max posts/day reached ({posted_today}/{cfg.max_posts_per_day}) — skipping")
+        if posted_today >= max_posts:
+            logger.info(f"Max posts/day reached ({posted_today}/{max_posts}) — skipping")
             return
 
-        # Get next approved post (optionally scheduled)
+        # Get next approved post
         result = await db.execute(
             select(Post, Article, Source)
             .join(Article, Post.article_id == Article.id)
@@ -113,7 +163,7 @@ async def publish_job():
 
         post, article, source = row
 
-        # Build caption if not manually set
+        # Build caption
         caption = post.caption or await build_caption(
             db,
             title=article.title,
@@ -122,7 +172,7 @@ async def publish_job():
             keywords=article.keywords_list,
         )
 
-        # ── Generate image card ──────────────────────────────────────────
+        # Generate card
         photo_id: str | None = None
         try:
             from image_card.generator import generate_news_card
@@ -132,11 +182,10 @@ async def publish_job():
                 source_label=article.source_label or source.name,
                 article_url=article.article_url,
             )
-            logger.info(f"Card generated ({len(card_bytes) // 1024} KB) for article id={article.id}")
             if publisher.is_configured:
                 photo_id = await publisher.upload_photo(db, card_bytes)
         except Exception as exc:
-            logger.warning(f"Card generation failed (will post without image): {exc}", exc_info=True)
+            logger.warning(f"Card generation failed: {exc}", exc_info=True)
 
         fb_post_id = await publisher.publish(
             db,
@@ -162,8 +211,12 @@ async def publish_job():
 # Start / stop
 # ---------------------------------------------------------------------------
 
-def start_scheduler():
-    interval = settings.scrape_interval_minutes
+async def start_scheduler():
+    """Start the scheduler, initializing intervals from DB if available."""
+    # We need a temporary DB session here
+    async with AsyncSessionLocal() as db:
+        live = await _get_lived_settings(db)
+        interval = live["scrape_interval_minutes"]
 
     scheduler.add_job(
         scrape_job,
@@ -177,7 +230,7 @@ def start_scheduler():
     scheduler.add_job(
         publish_job,
         "interval",
-        minutes=30,
+        minutes=30, # Publish check stays at fixed 30m or can be adjusted too
         id="publish_job",
         replace_existing=True,
         max_instances=1,

@@ -30,7 +30,13 @@ async def lifespan(app: FastAPI):
     await init_db()
     await _seed_default_sources()
     install_ws_log_handler()
-    start_scheduler()
+    await start_scheduler()
+    
+    from database import AsyncSessionLocal
+    from publisher.telegram import telegram_bot
+    async with AsyncSessionLocal() as db:
+        await telegram_bot.set_webhook(db)
+    
     yield
     stop_scheduler()
     logger.info("Backend shutdown complete.")
@@ -61,6 +67,10 @@ app.include_router(posts.router)
 app.include_router(settings_route.router)
 app.include_router(ws_logs.router)
 app.include_router(daily.router)
+
+from routes import telegram, analytics
+app.include_router(telegram.router, prefix="/api/telegram", tags=["telegram"])
+app.include_router(analytics.router, tags=["analytics"])
 
 
 # -- Health check --
@@ -100,6 +110,15 @@ async def stats():
         )
         last_post_at = last_post_result.scalar()
 
+        # Dynamic SchedulerBar data
+        from models.source import Source
+        active_sources_res = await db.execute(select(Source.name).where(Source.is_active == True))
+        active_sources = [r[0] for r in active_sources_res]
+
+        from scheduler import scheduler as aps
+        scrape_job = aps.get_job("scrape_job")
+        next_scrape_at = scrape_job.next_run_time.isoformat() if scrape_job and scrape_job.next_run_time else None
+
     return {
         "posts_today": posts_today or 0,
         "pending_count": pending_count or 0,
@@ -107,6 +126,8 @@ async def stats():
         "last_post_at": last_post_at.isoformat() if last_post_at else None,
         "scraper_running": _scraper_running,
         "scheduler_running": scheduler.running,
+        "active_sources": active_sources,
+        "next_scrape_at": next_scrape_at,
     }
 
 
