@@ -249,9 +249,7 @@ async def generate_news_card(
     # "Source : domain" — regular white, right-aligned
     ft_reg = _latin_font(34)
     domain_str = (
-        f"Source : {_domain(article_url)}"
-        if article_url else
-        f"Source : {source_label}"
+        f"Source : nepsesignal.com"
     )
     d_tw = int(draw.textlength(domain_str, font=ft_reg))
     draw.text(
