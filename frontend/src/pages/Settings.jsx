@@ -12,12 +12,18 @@ const SETTING_FIELDS = [
   { key: 'quiet_hours_start',    label: 'Quiet Hours Start (0–23)',   type: 'number',   placeholder: '22' },
   { key: 'quiet_hours_end',      label: 'Quiet Hours End (0–23)',     type: 'number',   placeholder: '6' },
   { key: 'keyword_filter',       label: 'Keyword Filter (comma-separated)', type: 'textarea', placeholder: 'NEPSE, share market, IPO, सेयर, बजार' },
+  { key: 'telegram_enabled',     label: 'Enable Telegram Approval', type: 'checkbox' },
+  { key: 'telegram_bot_token',   label: 'Telegram Bot Token',     type: 'password', placeholder: '123456789:AA...' },
+  { key: 'telegram_chat_id',     label: 'Telegram Admin Chat ID', type: 'text',     placeholder: '8721039550' },
+  { key: 'telegram_webhook_url', label: 'Telegram Webhook URL',   type: 'text',     placeholder: 'https://your-ngrok.app' },
 ]
 
 export default function Settings() {
   const [values, setValues] = useState({})
   const [autoApprove, setAutoApprove] = useState(false)
+  const [telegramEnabled, setTelegramEnabled] = useState(false)
   const [showToken, setShowToken] = useState(false)
+  const [showTgToken, setShowTgToken] = useState(false)
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -25,6 +31,7 @@ export default function Settings() {
     const r = await api.get('/settings')
     setValues(r.data)
     setAutoApprove(r.data.auto_approve === 'true')
+    setTelegramEnabled(r.data.telegram_enabled === 'true')
   }
 
   useEffect(() => { load() }, [])
@@ -33,8 +40,13 @@ export default function Settings() {
     setLoading(true)
     try {
       const items = [
-        ...Object.entries(values).map(([key, value]) => ({ key, value: String(value) })),
+        ...Object.entries(values).map(([key, value]) => {
+          // Exclude manually handled toggles
+          if (['auto_approve', 'telegram_enabled'].includes(key)) return null
+          return { key, value: String(value) }
+        }).filter(Boolean),
         { key: 'auto_approve', value: String(autoApprove) },
+        { key: 'telegram_enabled', value: String(telegramEnabled) },
       ]
       await api.put('/settings', items)
       setSaved(true)
@@ -78,6 +90,47 @@ export default function Settings() {
               </div>
             )
           })}
+        </div>
+
+        {/* Telegram Section */}
+        <div className="card" style={{ gridColumn: '1 / -1' }}>
+          <h2 style={{ fontWeight: 700, marginBottom: 20, color: 'var(--accent)' }}>🤖 Telegram Bot Integration</h2>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Enable Telegram Approval</span>
+            <label className="toggle">
+              <input type="checkbox" checked={telegramEnabled} onChange={e => setTelegramEnabled(e.target.checked)} />
+              <span className="toggle-slider" />
+            </label>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              {telegramEnabled ? 'New articles will be sent to Telegram for approval' : 'Telegram notifications are disabled'}
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+            {['telegram_bot_token', 'telegram_chat_id', 'telegram_webhook_url'].map(key => {
+              const f = SETTING_FIELDS.find(f => f.key === key)
+              return (
+                <div className="form-group" key={key} style={key === 'telegram_bot_token' ? { gridColumn: '1 / -1' } : {}}>
+                  <label className="form-label">{f.label}</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      className="form-input"
+                      type={key === 'telegram_bot_token' && !showTgToken ? 'password' : 'text'}
+                      placeholder={f.placeholder}
+                      value={values[key] || ''}
+                      onChange={e => setValues(v => ({ ...v, [key]: e.target.value }))}
+                    />
+                    {key === 'telegram_bot_token' && (
+                      <button type="button" className="btn btn-ghost" onClick={() => setShowTgToken(s => !s)}>
+                        {showTgToken ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
 
         {/* Scheduling */}

@@ -9,12 +9,12 @@ import api from '../lib/api'
 
 const NAV_ITEMS = [
   { to: '/',           icon: LayoutDashboard, label: 'Dashboard'   },
-  { to: '/sources',    icon: Radio,           label: 'Sources'     },
-  { to: '/queue',      icon: ListChecks,      label: 'Queue'       },
-  { to: '/history',    icon: History,         label: 'History'     },
-  { to: '/settings',   icon: Settings,        label: 'Settings'    },
+  { to: '/queue',      icon: ListChecks,      label: 'All Posts'   },
   { to: '/daily-post', icon: BarChart2,       label: 'Daily Post'  },
   { to: '/custom-post',icon: Type,            label: 'Custom Post' },
+  { to: '/history',    icon: History,         label: 'History'     },
+  { to: '/sources',    icon: Radio,           label: 'Sources'     },
+  { to: '/settings',   icon: Settings,        label: 'Settings'    },
 ]
 
 export default function Navbar() {
