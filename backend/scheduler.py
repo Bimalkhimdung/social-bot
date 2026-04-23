@@ -38,16 +38,18 @@ async def _get_lived_settings(db: AsyncSession) -> dict[str, Any]:
     """Fetch interval and limits from database 'Setting' table."""
     keys = [
         "scrape_interval_minutes",
+        "publish_interval_minutes",
         "max_posts_per_day",
         "quiet_hours_start",
-        "quiet_hours_end"
+        "quiet_hours_end",
+        "auto_publish"
     ]
     result = await db.execute(select(Setting).where(Setting.key.in_(keys)))
     items = {s.key: s.value for s in result.scalars().all()}
     
     cfg = get_settings()
     
-    # Helper to parse ints safely
+    # Helpers for safe parsing
     def _get_int(key, default):
         val = items.get(key)
         try:
@@ -55,11 +57,18 @@ async def _get_lived_settings(db: AsyncSession) -> dict[str, Any]:
         except (ValueError, TypeError):
             return default
 
+    def _get_bool(key, default):
+        val = items.get(key)
+        if val is None: return default
+        return str(val).lower() == "true"
+
     return {
         "scrape_interval_minutes": _get_int("scrape_interval_minutes", cfg.scrape_interval_minutes),
+        "publish_interval_minutes": _get_int("publish_interval_minutes", cfg.publish_interval_minutes),
         "max_posts_per_day": _get_int("max_posts_per_day", cfg.max_posts_per_day),
         "quiet_hours_start": _get_int("quiet_hours_start", cfg.quiet_hours_start),
         "quiet_hours_end": _get_int("quiet_hours_end", cfg.quiet_hours_end),
+        "auto_publish": _get_bool("auto_publish", cfg.auto_publish),
     }
 
 
@@ -113,6 +122,21 @@ async def publish_job():
     async with AsyncSessionLocal() as db:
         # Load live settings
         live = await _get_lived_settings(db)
+        
+        # 0. Reschedule if interval changed
+        new_interval = live["publish_interval_minutes"]
+        job = scheduler.get_job("publish_job")
+        if job:
+            current_minutes = job.trigger.interval.total_seconds() / 60
+            if int(current_minutes) != new_interval:
+                logger.info(f"Rescheduling publish_job: {int(current_minutes)}m -> {new_interval}m")
+                scheduler.reschedule_job("publish_job", trigger="interval", minutes=new_interval)
+
+        # 1. Master toggle check
+        if not live["auto_publish"]:
+            logger.debug("Auto-publish is disabled in settings — skipping")
+            return
+
         max_posts = live["max_posts_per_day"]
         qs = live["quiet_hours_start"]
         qe = live["quiet_hours_end"]
@@ -213,15 +237,15 @@ async def publish_job():
 
 async def start_scheduler():
     """Start the scheduler, initializing intervals from DB if available."""
-    # We need a temporary DB session here
     async with AsyncSessionLocal() as db:
         live = await _get_lived_settings(db)
-        interval = live["scrape_interval_minutes"]
+        scrape_int = live["scrape_interval_minutes"]
+        publish_int = live["publish_interval_minutes"]
 
     scheduler.add_job(
         scrape_job,
         "interval",
-        minutes=interval,
+        minutes=scrape_int,
         id="scrape_job",
         replace_existing=True,
         max_instances=1,
@@ -230,17 +254,18 @@ async def start_scheduler():
     scheduler.add_job(
         publish_job,
         "interval",
-        minutes=30, # Publish check stays at fixed 30m or can be adjusted too
+        minutes=publish_int,
         id="publish_job",
         replace_existing=True,
         max_instances=1,
     )
 
     scheduler.start()
-    logger.info(f"Scheduler started — scrape every {interval}min, publish every 30min")
+    logger.info(f"Scheduler started — scrape every {scrape_int}m, publish every {publish_int}m")
 
 
 def stop_scheduler():
     if scheduler.running:
         scheduler.shutdown(wait=False)
         logger.info("Scheduler stopped")
+

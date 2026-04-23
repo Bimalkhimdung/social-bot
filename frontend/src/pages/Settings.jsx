@@ -21,6 +21,7 @@ const SETTING_FIELDS = [
 export default function Settings() {
   const [values, setValues] = useState({})
   const [autoApprove, setAutoApprove] = useState(false)
+  const [autoPublish, setAutoPublish] = useState(true)
   const [telegramEnabled, setTelegramEnabled] = useState(false)
   const [showToken, setShowToken] = useState(false)
   const [showTgToken, setShowTgToken] = useState(false)
@@ -31,6 +32,7 @@ export default function Settings() {
     const r = await api.get('/settings')
     setValues(r.data)
     setAutoApprove(r.data.auto_approve === 'true')
+    setAutoPublish(r.data.auto_publish !== 'false') // Default true
     setTelegramEnabled(r.data.telegram_enabled === 'true')
   }
 
@@ -42,10 +44,11 @@ export default function Settings() {
       const items = [
         ...Object.entries(values).map(([key, value]) => {
           // Exclude manually handled toggles
-          if (['auto_approve', 'telegram_enabled'].includes(key)) return null
+          if (['auto_approve', 'auto_publish', 'telegram_enabled'].includes(key)) return null
           return { key, value: String(value) }
         }).filter(Boolean),
         { key: 'auto_approve', value: String(autoApprove) },
+        { key: 'auto_publish', value: String(autoPublish) },
         { key: 'telegram_enabled', value: String(telegramEnabled) },
       ]
       await api.put('/settings', items)
@@ -150,7 +153,18 @@ export default function Settings() {
             <strong>How it works:</strong> The background bot wakes up periodically based on your interval to parse all active sources. Any posts reaching the "Approved" queue will not be published all at once. Instead, the bot will slowly <em>drip-feed</em> them to your Facebook audience one item at a time, strictly respecting your maximum daily limit to prevent spam. The bot will automatically halt all publications during your specified quiet hours.
           </div>
 
-          {['scrape_interval_minutes','max_posts_per_day','quiet_hours_start','quiet_hours_end'].map(key => {
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            <div className="form-group">
+              <label className="form-label">Scrape Interval (min)</label>
+              <input className="form-input" type="number" value={values['scrape_interval_minutes'] || ''} onChange={e => setValues(v => ({ ...v, scrape_interval_minutes: e.target.value }))} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Publish Interval (min)</label>
+              <input className="form-input" type="number" value={values['publish_interval_minutes'] || ''} onChange={e => setValues(v => ({ ...v, publish_interval_minutes: e.target.value }))} />
+            </div>
+          </div>
+
+          {['max_posts_per_day','quiet_hours_start','quiet_hours_end'].map(key => {
             const f = SETTING_FIELDS.find(f => f.key === key)
             return (
               <div className="form-group" key={key}>
@@ -159,17 +173,32 @@ export default function Settings() {
               </div>
             )
           })}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Auto-Approve Posts</span>
-            <label className="toggle">
-              <input type="checkbox" checked={autoApprove} onChange={e => setAutoApprove(e.target.checked)} />
-              <span className="toggle-slider" />
-            </label>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              {autoApprove ? 'Posts auto-publish without review' : 'Manual review required'}
-            </span>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 600, minWidth: 160 }}>Auto-Approve News</span>
+              <label className="toggle">
+                <input type="checkbox" checked={autoApprove} onChange={e => setAutoApprove(e.target.checked)} />
+                <span className="toggle-slider" />
+              </label>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                {autoApprove ? 'Articles auto-approved' : 'Manual review required'}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 600, minWidth: 160 }}>Auto-Publish to FB</span>
+              <label className="toggle">
+                <input type="checkbox" checked={autoPublish} onChange={e => setAutoPublish(e.target.checked)} />
+                <span className="toggle-slider" />
+              </label>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                {autoPublish ? 'Bot will post to Facebook' : 'Posting is paused'}
+              </span>
+            </div>
           </div>
         </div>
+
 
         {/* Caption + Keywords */}
         <div className="card">

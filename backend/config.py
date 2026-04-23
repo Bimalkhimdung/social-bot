@@ -25,10 +25,13 @@ class Settings(BaseSettings):
 
     # Scheduler
     scrape_interval_minutes: int = 30
+    publish_interval_minutes: int = 30
     max_posts_per_day: int = 4
     quiet_hours_start: int = 22
     quiet_hours_end: int = 6
     auto_approve: bool = False
+    auto_publish: bool = True
+
 
     # Caption
     caption_template: str = "📰 {title}\n\n🔗 {source} | {date}\n\n{hashtags}"
