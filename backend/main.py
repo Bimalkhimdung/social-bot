@@ -134,7 +134,14 @@ async def stats():
 
         from scheduler import scheduler as aps
         scrape_job = aps.get_job("scrape_job")
-        next_scrape_at = scrape_job.next_run_time.isoformat() + "Z" if scrape_job and scrape_job.next_run_time else None
+        next_scrape_at = None
+        if scrape_job and scrape_job.next_run_time:
+            nxt = scrape_job.next_run_time
+            # Ensure it's ISO and ends with Z if it's naive (usually APScheduler uses aware UTC)
+            val = nxt.isoformat()
+            if "+" not in val and "Z" not in val:
+                val += "Z"
+            next_scrape_at = val
 
     return {
         "posts_today": posts_today or 0,

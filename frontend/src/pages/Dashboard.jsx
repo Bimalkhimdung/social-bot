@@ -36,7 +36,10 @@ const getInitials = (name) => {
 // Helper for countdown
 const timeUntil = (date) => {
   if (!date) return '—'
-  const diff = new Date(date) - new Date()
+  const parsed = new Date(date)
+  if (isNaN(parsed.getTime())) return '—'
+  
+  const diff = parsed - new Date()
   if (diff <= 0) return 'Any moment'
   const mins = Math.floor(diff / 60000)
   const secs = Math.floor((diff % 60000) / 1000)
