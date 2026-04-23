@@ -58,6 +58,15 @@ export default function PostCard({ post, actions }) {
             </a>
           )}
 
+          {article?.scraped_at && (
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ opacity: 0.6 }}>Scraped:</span> 
+              <span>{new Date(article.scraped_at).toLocaleString('en-US', { 
+                month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false 
+              })}</span>
+            </div>
+          )}
+
           {posted_at && (
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
               Posted: {new Date(posted_at).toLocaleString()}
