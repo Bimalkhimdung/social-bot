@@ -17,6 +17,12 @@ class Settings(BaseSettings):
     fb_page_access_token: str = ""
     fb_page_id: str = ""
 
+    # Telegram
+    telegram_enabled: bool = False
+    telegram_bot_token: str = ""
+    telegram_chat_id: str = ""
+    telegram_webhook_url: str = ""
+
     # Scheduler
     scrape_interval_minutes: int = 30
     max_posts_per_day: int = 4

@@ -33,9 +33,20 @@ const getInitials = (name) => {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 }
 
+// Helper for countdown
+const timeUntil = (date) => {
+  if (!date) return '—'
+  const diff = new Date(date) - new Date()
+  if (diff <= 0) return 'Any moment'
+  const mins = Math.floor(diff / 60000)
+  const secs = Math.floor((diff % 60000) / 1000)
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+}
+
 export default function Dashboard() {
   const [stats, setStats] = useState(null)
   const [recentPosts, setRecentPosts] = useState([])
+  const [countdown, setCountdown] = useState('--:--')
   const navigate = useNavigate()
 
   const loadData = async () => {
@@ -52,13 +63,22 @@ export default function Dashboard() {
     return () => clearInterval(interval)
   }, [])
 
+  // Timer for countdown
+  useEffect(() => {
+    if (!stats?.next_scrape_at) return
+    const id = setInterval(() => {
+      setCountdown(timeUntil(stats.next_scrape_at))
+    }, 1000)
+    return () => clearInterval(id)
+  }, [stats?.next_scrape_at])
+
   return (
     <div className="fade-in">
       {/* Real-time Status Bar */}
       <SchedulerBar 
         running={stats?.scheduler_running} 
-        monitoring={['Sharesansar', 'Nepali Paisa', 'Bizshala']} 
-        nextSync="04:22"
+        monitoring={stats?.active_sources || []} 
+        nextSync={countdown}
       />
 
       {/* Main Stats Grid */}

@@ -26,6 +26,7 @@ from config import get_settings
 from models.article import Article
 from models.post import Post, PostStatus
 from models.source import Source
+from publisher.telegram import telegram_bot
 
 logger = logging.getLogger("nepsebot.scraper")
 settings = get_settings()
@@ -261,8 +262,25 @@ async def scrape_source(source: Source, db: AsyncSession) -> dict[str, int]:
             caption=None,
         )
         db.add(post)
+        await db.flush()  # get post.id
+
         new_count += 1
         logger.info(f"[{source.name}] New article: {title[:70]} | status={status.value}")
+
+        # Telegram notification for pending posts
+        if status == PostStatus.pending:
+            try:
+                # We do this after flush so post.id is available
+                await telegram_bot.send_approval_request(
+                    db=db,
+                    post_id=post.id,
+                    title=article.title,
+                    source_name=source.name,
+                    article_url=article.article_url,
+                    summary=article.summary
+                )
+            except Exception as e:
+                logger.error(f"Failed to send Telegram notify: {e}")
 
     # Update last_scraped_at
     source.last_scraped_at = datetime.utcnow()
