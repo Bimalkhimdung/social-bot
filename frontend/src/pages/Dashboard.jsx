@@ -104,9 +104,15 @@ export default function Dashboard() {
         />
         <StatCard
           label="Last Post"
-          value={stats?.last_post_at ? new Date(stats.last_post_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : 'None'}
+          value={stats?.last_post_at ? 
+            new Date(stats.last_post_at).toLocaleString('en-US', { 
+              timeZone: 'Asia/Kathmandu', 
+              month: 'short', day: 'numeric', 
+              hour: '2-digit', minute: '2-digit',
+              hour12: false 
+            }) : 'None'}
           icon={Clock}
-          trend="UTC+5:45 (Nepal)"
+          trend="Nepal Standard Time"
         />
       </div>
 

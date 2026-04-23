@@ -22,7 +22,16 @@ export default function StatCard({ label, value, icon: Icon, color = 'var(--acce
         </div>
       </div>
 
-      <div style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1, letterSpacing: '-0.02em' }}>
+      <div style={{ 
+        fontSize: (value?.toString().length > 6) ? '1.5rem' : '2.5rem', 
+        fontWeight: 800, 
+        color: 'var(--text-primary)', 
+        lineHeight: 1.2, 
+        letterSpacing: '-0.02em',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis'
+      }}>
         {value ?? '—'}
       </div>
 

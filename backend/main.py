@@ -117,7 +117,7 @@ async def stats():
             .limit(3)
         )
         recent_auto_posts = [
-            {"title": row[0], "posted_at": row[1].isoformat() if row[1] else None}
+            {"title": row[0], "posted_at": row[1].isoformat() + "Z" if row[1] else None}
             for row in recent_auto_posts_res
         ]
 
@@ -134,7 +134,7 @@ async def stats():
 
         from scheduler import scheduler as aps
         scrape_job = aps.get_job("scrape_job")
-        next_scrape_at = scrape_job.next_run_time.isoformat() if scrape_job and scrape_job.next_run_time else None
+        next_scrape_at = scrape_job.next_run_time.isoformat() + "Z" if scrape_job and scrape_job.next_run_time else None
 
     return {
         "posts_today": posts_today or 0,
@@ -142,12 +142,13 @@ async def stats():
         "total_articles": total_articles or 0,
         "auto_approved_count": auto_approved_count or 0,
         "recent_auto_posts": recent_auto_posts,
-        "last_post_at": last_post_at.isoformat() if last_post_at else None,
+        "last_post_at": last_post_at.isoformat() + "Z" if last_post_at else None,
         "scraper_running": _scraper_running,
         "scheduler_running": scheduler.running,
         "active_sources": active_sources,
         "next_scrape_at": next_scrape_at,
     }
+
 
 
 

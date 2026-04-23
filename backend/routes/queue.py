@@ -27,10 +27,10 @@ def _post_out(post: Post, article: Article, source: Source) -> dict:
         "id": post.id,
         "status": post.status.value,
         "caption": post.caption,
-        "scheduled_at": post.scheduled_at.isoformat() if post.scheduled_at else None,
-        "posted_at": post.posted_at.isoformat() if post.posted_at else None,
+        "scheduled_at": post.scheduled_at.isoformat() + "Z" if post.scheduled_at else None,
+        "posted_at": post.posted_at.isoformat() + "Z" if post.posted_at else None,
         "fb_post_id": post.fb_post_id,
-        "created_at": post.created_at.isoformat(),
+        "created_at": post.created_at.isoformat() + "Z",
         "article": {
             "id": article.id,
             "title": article.title,
@@ -38,11 +38,12 @@ def _post_out(post: Post, article: Article, source: Source) -> dict:
             "image_url": article.image_url,
             "article_url": article.article_url,
             "keywords": article.keywords_list,
-            "scraped_at": article.scraped_at.isoformat(),
+            "scraped_at": article.scraped_at.isoformat() + "Z",
             "source_name": source.name,
             "source_label": article.source_label,
         },
     }
+
 
 
 async def _fetch_post_row(post_id: int, db: AsyncSession):

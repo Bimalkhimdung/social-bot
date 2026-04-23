@@ -5,12 +5,18 @@ export default function HealthCheck({ stats }) {
   // Helper for relative time
   const timeOnly = (date) => {
     if (!date) return '--:--:--'
-    return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
+    return new Date(date).toLocaleTimeString([], { 
+      timeZone: 'Asia/Kathmandu',
+      hour: '2-digit', 
+      minute: '2-digit', 
+      second: '2-digit', 
+      hour12: false 
+    })
   }
 
   return (
     <div className="card" style={{ height: 420, display: 'flex', flexDirection: 'column' }}>
-      <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', marginBottom: 24 }}>System Health</h2>
+      <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', marginBottom: 24 }}>Post Status</h2>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20, flex: 1 }}>
         {/* Real Metric: Auto-Approved Count */}
