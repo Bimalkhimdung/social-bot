@@ -104,6 +104,23 @@ async def stats():
         )
         total_articles = await db.scalar(select(func.count(Article.id)))
 
+        # Auto-approved stats
+        auto_approved_count = await db.scalar(
+            select(func.count(Post.id)).where(Post.is_auto_approved == True)
+        )
+        
+        recent_auto_posts_res = await db.execute(
+            select(Article.title, Post.posted_at)
+            .join(Article, Post.article_id == Article.id)
+            .where(Post.is_auto_approved == True, Post.status == PostStatus.posted)
+            .order_by(Post.posted_at.desc())
+            .limit(3)
+        )
+        recent_auto_posts = [
+            {"title": row[0], "posted_at": row[1].isoformat() if row[1] else None}
+            for row in recent_auto_posts_res
+        ]
+
         last_post_result = await db.execute(
             select(Post.posted_at).where(Post.status == PostStatus.posted)
             .order_by(Post.posted_at.desc()).limit(1)
@@ -123,12 +140,15 @@ async def stats():
         "posts_today": posts_today or 0,
         "pending_count": pending_count or 0,
         "total_articles": total_articles or 0,
+        "auto_approved_count": auto_approved_count or 0,
+        "recent_auto_posts": recent_auto_posts,
         "last_post_at": last_post_at.isoformat() if last_post_at else None,
         "scraper_running": _scraper_running,
         "scheduler_running": scheduler.running,
         "active_sources": active_sources,
         "next_scrape_at": next_scrape_at,
     }
+
 
 
 # -- Seed default sources on first run --

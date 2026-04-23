@@ -1,0 +1,23 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environments
+.env
+.env.local
+
+# Logs
+*.log
+
+# Dependencies
+node_modules/
+venv/
+__pycache__/
+
+# Databases
+backend/*.db
+backend/*.sqlite3
+
+# Build
+dist/
+build/

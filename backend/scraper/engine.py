@@ -267,6 +267,7 @@ async def scrape_source(source: Source, db: AsyncSession) -> dict[str, int]:
         post = Post(
             article_id=article.id,
             status=status,
+            is_auto_approved=auto_approve,
             caption=None,
         )
         db.add(post)

@@ -21,6 +21,7 @@ class Post(Base):
     status: Mapped[PostStatus] = mapped_column(
         SAEnum(PostStatus, name="post_status"), default=PostStatus.pending, index=True
     )
+    is_auto_approved: Mapped[bool] = mapped_column(default=False)
     scheduled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     posted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     fb_post_id: Mapped[str | None] = mapped_column(String(200), nullable=True)

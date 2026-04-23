@@ -183,7 +183,7 @@ export default function Dashboard() {
       {/* Expanded Analytics Row */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 24, marginBottom: 40 }}>
         <PerformanceChart />
-        <HealthCheck />
+        <HealthCheck stats={stats} />
       </div>
     </div>
   )
