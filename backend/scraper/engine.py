@@ -50,8 +50,16 @@ def _url_hash(url: str) -> str:
 
 def _keyword_match(text: str, keywords: list[str]) -> list[str]:
     """Return the keywords found in text (case-insensitive)."""
+    if not text:
+        return []
+    
     text_lower = text.lower()
-    return [kw for kw in keywords if kw.lower() in text_lower]
+    found = []
+    for kw in keywords:
+        clean_kw = kw.strip().lower()
+        if clean_kw and clean_kw in text_lower:
+            found.append(kw)
+    return found
 
 
 def _resolve_url(href: str, base_url: str) -> str:

@@ -42,13 +42,15 @@ class Settings(BaseSettings):
 
     # Keywords
     enable_keyword_filter: bool = True
-    # Keyword filter (comma-separated in env, list here)
+    # Keyword filter (comma-separated in .env, or use this default list)
     keyword_filter: list[str] = [
-        "NEPSE", "share market", "stock", "IPO", "FPO", "right share",
+        "NEPSE", "share market", "stock market", "IPO", "FPO", "right share",
         "bonus share", "dividend", "SEBON", "broker", "demat", "Meroshare",
-        "circuit breaker", "bull", "bear", "index",
-        "लगानी", "सेयर", "बजार", "शेयर","सेयर","नेप्से","ब्रोकर","नेपाल राष्ट्र बैंक","सर्किट ब्रेकर","सर्किट","सेयर बजार"
+        "circuit breaker", "bullish", "bearish", "NEPSE index",
+        "लगानी", "सेयर", "बजार", "शेयर", "नेप्से", "ब्रोकर", 
+        "नेपाल राष्ट्र बैंक", "सर्किट ब्रेकर", "सेयर बजार", "लाभांश", "हकप्रद"
     ]
+
 
 
 @lru_cache
