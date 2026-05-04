@@ -41,6 +41,7 @@ async def publish_approved_post(post_id: int):
                 return
 
             logger.info(f"Instant publishing approved post {post_id}...")
+            await publisher.refresh_config(db)
 
             caption = post.caption or await build_caption(
                 db,

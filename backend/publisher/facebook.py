@@ -60,11 +60,16 @@ async def build_caption(db: AsyncSession, title: str, source_name: str, article_
 # ---------------------------------------------------------------------------
 
 class FacebookPublisher:
-    async def _reload_config(self, db: AsyncSession):
+    async def refresh_config(self, db: AsyncSession):
+        """Load FB credentials from the DB Setting table.
+
+        Must be called before reading `is_configured` from outside this class —
+        otherwise the property reflects stale (or never-loaded) state.
+        """
         result = await db.execute(select(Setting).where(Setting.key.in_(["fb_page_access_token", "fb_page_id"])))
         db_items = {s.key: s.value for s in result.scalars().all()}
         cfg = get_settings()
-        
+
         self._token = db_items.get("fb_page_access_token") or cfg.fb_page_access_token
         self._page_id = db_items.get("fb_page_id") or cfg.fb_page_id
 
@@ -77,7 +82,7 @@ class FacebookPublisher:
         Upload image bytes to Facebook Page Photos (unpublished).
         Returns photo_id to attach to a post, or None on failure.
         """
-        await self._reload_config(db)
+        await self.refresh_config(db)
         if not self.is_configured:
             return None
 
@@ -113,7 +118,7 @@ class FacebookPublisher:
         If photo_id is provided, attaches the pre-uploaded card image.
         Returns the fb_post_id on success, None on failure/dry-run.
         """
-        await self._reload_config(db)
+        await self.refresh_config(db)
 
         if dry_run or not self.is_configured:
             logger.info(

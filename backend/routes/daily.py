@@ -40,6 +40,8 @@ async def post_daily_to_facebook(
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Card generation failed: {exc}")
 
+    await publisher.refresh_config(db)
+
     # Upload photo
     photo_id = None
     if publisher.is_configured:

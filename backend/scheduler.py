@@ -122,6 +122,7 @@ async def publish_job():
     async with AsyncSessionLocal() as db:
         # Load live settings
         live = await _get_lived_settings(db)
+        await publisher.refresh_config(db)
         
         # 0. Reschedule if interval changed
         new_interval = live["publish_interval_minutes"]

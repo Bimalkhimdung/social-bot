@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from config import get_settings
 from models.article import Article
 from models.post import Post, PostStatus
+from models.settings import Setting
 from models.source import Source
 from publisher.telegram import telegram_bot
 
@@ -212,9 +213,17 @@ async def _scrape_api(source: Source, client: httpx.AsyncClient) -> list[dict]:
 # Main engine
 # ---------------------------------------------------------------------------
 
+async def _get_live_auto_approve(db: AsyncSession) -> bool:
+    val = await db.scalar(select(Setting.value).where(Setting.key == "auto_approve"))
+    if val is None:
+        return settings.auto_approve
+    return str(val).lower() == "true"
+
+
 async def scrape_source(source: Source, db: AsyncSession) -> dict[str, int]:
     """Scrape a single source, deduplicate, keyword-filter, and insert articles."""
     keywords = settings.keyword_filter
+    auto_approve = await _get_live_auto_approve(db)
 
     async with httpx.AsyncClient() as client:
         if source.source_type == "api":
@@ -260,8 +269,6 @@ async def scrape_source(source: Source, db: AsyncSession) -> dict[str, int]:
         db.add(article)
         await db.flush()  # get article.id
 
-        # Auto-approve logic
-        auto_approve = settings.auto_approve
         status = PostStatus.approved if auto_approve else PostStatus.pending
 
         post = Post(

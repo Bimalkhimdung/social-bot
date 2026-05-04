@@ -167,6 +167,7 @@ async def publish_now(
     from publisher.facebook import publisher, build_caption
 
     post, article, source = await _fetch_post_row(post_id, db)
+    await publisher.refresh_config(db)
 
     caption = post.caption or await build_caption(
         db,

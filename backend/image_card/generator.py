@@ -84,10 +84,13 @@ def _ensure_fonts() -> None:
 
 
 def _devanagari_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
+    # RAQM enables HarfBuzz shaping — required for Devanagari matra reordering
+    # and conjunct formation. Falls back to BASIC if Pillow wasn't built with
+    # libraqm; in that case text will render garbled (matras misplaced).
     variant = "Bold" if bold else "Regular"
     path = FONTS_DIR / f"NotoSansDevanagari-{variant}.ttf"
     try:
-        return ImageFont.truetype(str(path), size)
+        return ImageFont.truetype(str(path), size, layout_engine=ImageFont.Layout.RAQM)
     except Exception:
         return ImageFont.load_default()
 
